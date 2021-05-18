@@ -6,15 +6,17 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from bayesregress.regress import (
-    LogLikelihood,
-    GaussianLogLikelihood,
     NoninteractingMultivariatePredictor,
     LogPosterior,
     BayesianRegressor,
-    BernoulliLogLikelihood,
     GaussianLogPrior,
     ConvergenceError,
     HessianIllConditionedError,
+    )
+from bayesregress.likelihood import (
+    LogLikelihood,
+    GaussianLogLikelihood,
+    BernoulliLogLikelihood,
     )
 
 
