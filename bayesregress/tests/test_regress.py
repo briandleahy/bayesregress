@@ -6,24 +6,11 @@ import numpy as np
 from bayesregress import regress, prior
 from bayesregress.likelihood import GaussianLogLikelihood
 from bayesregress.tests.common import *
+from bayesregress.posterior import LogPosterior
 
 
 TOLS = {"atol": 1e-12, "rtol": 1e-12}
 MEDTOLS = {"atol": 1e-6, "rtol": 1e-6}
-
-class TestLogPosterior(unittest.TestCase):
-    def test_log_posterior(self):
-        np.random.seed(218)
-        params = np.random.randn(4)
-        log_prior = prior.GaussianLogPrior()
-        log_likelihood = make_gaussian_log_likelihood()
-        log_posterior = regress.LogPosterior(log_prior, log_likelihood)
-
-        tocheck = log_posterior(params)
-        correct = (log_prior(params) +
-                   log_likelihood(params))
-        self.assertAlmostEqual(tocheck, correct, places=12)
-
 
 class TestBayesRegressor(unittest.TestCase):
     def test_init_stores_posterior(self):  # FIXME
@@ -497,9 +484,7 @@ class TestRegressorFindModelEvidence(unittest.TestCase):
             0.86466443, 0.23203177, -0.40320498, -1.58266396, 0.89672305,
             -0.99160254, 0.4601744, 0.64791449, -0.32455241, 2.42983592])
         ll = GaussianLogLikelihood(x, y)
-        posterior = regress.LogPosterior(
-            prior.GaussianLogPrior(),
-            ll)
+        posterior = LogPosterior(prior.GaussianLogPrior(), ll)
         regressor = regress.BayesianRegressor(posterior)
 
         p0 = np.zeros(4)

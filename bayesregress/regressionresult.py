@@ -7,7 +7,6 @@ from scipy.optimize import least_squares
 
 from bayesregress.regress import (
     NoninteractingMultivariatePredictor,
-    LogPosterior,
     BayesianRegressor,
     ConvergenceError,
     HessianIllConditionedError,
@@ -18,7 +17,7 @@ from bayesregress.likelihood import (
     BernoulliLogLikelihood,
     )
 from bayesregress.prior import GaussianLogPrior
-
+from bayesregress.posterior import LogPosterior
 
 def make_regression_result(x_dict, y_dict, **kwargs):
     factory = RegressionResultsGetter(x_dict, y_dict, **kwargs)
