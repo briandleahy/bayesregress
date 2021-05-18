@@ -6,6 +6,7 @@ import numpy as np
 
 from bayesregress import regress
 from bayesregress import regressionresult
+from bayesregress.prior import GaussianLogPrior
 
 
 TOLS = {'atol': 1e-13, 'rtol': 1e-13}
@@ -515,7 +516,7 @@ class TestRegressionResultsGetter(unittest.TestCase):
     def test_make_prior_returns_gaussian(self):
         getter = make_regression_results_getter()
         prior = getter._make_prior()
-        self.assertIsInstance(prior, regress.GaussianLogPrior)
+        self.assertIsInstance(prior, GaussianLogPrior)
 
     def test_normalize_y_when_gaussian(self):
         np.random.seed(1427)

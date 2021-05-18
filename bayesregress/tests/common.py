@@ -1,6 +1,7 @@
 import numpy as np
 
 from bayesregress import likelihood, regress
+from bayesregress.prior import GaussianLogPrior
 
 
 class MockLL(likelihood.LogLikelihood):
@@ -50,7 +51,7 @@ def make_regressor():
 
 def make_gaussian_log_posterior():
     likelihood = make_gaussian_log_likelihood()
-    prior = regress.GaussianLogPrior(mean=0, std=1)
+    prior = GaussianLogPrior(mean=0, std=1)
     posterior = regress.LogPosterior(prior, likelihood)
     return posterior
 

@@ -9,7 +9,6 @@ from bayesregress.regress import (
     NoninteractingMultivariatePredictor,
     LogPosterior,
     BayesianRegressor,
-    GaussianLogPrior,
     ConvergenceError,
     HessianIllConditionedError,
     )
@@ -18,6 +17,7 @@ from bayesregress.likelihood import (
     GaussianLogLikelihood,
     BernoulliLogLikelihood,
     )
+from bayesregress.prior import GaussianLogPrior
 
 
 def make_regression_result(x_dict, y_dict, **kwargs):
