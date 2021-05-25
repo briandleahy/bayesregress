@@ -7,6 +7,7 @@ import numpy as np
 from bayesregress import regress
 from bayesregress import regressionresult
 from bayesregress.prior import GaussianLogPrior
+from bayesregress.predictors import NoninteractingMultivariatePredictor
 
 
 TOLS = {'atol': 1e-13, 'rtol': 1e-13}
@@ -81,7 +82,7 @@ class TestRegressionResult(unittest.TestCase):
         # We check by taking a constant model (0th order polynomial),
         # giving it a variance v,
         # and checking that the returned error is sqrt(v).
-        predictor = regress.NoninteractingMultivariatePredictor
+        predictor = NoninteractingMultivariatePredictor
 
         np.random.seed(1307)
         var = np.exp(np.random.randn())
@@ -100,7 +101,7 @@ class TestRegressionResult(unittest.TestCase):
             self.assertAlmostEqual(err, correct, places=10)
 
     def test_errors_map_scaled_returns_map_errors(self):
-        predictor = regress.NoninteractingMultivariatePredictor
+        predictor = NoninteractingMultivariatePredictor
 
         np.random.seed(1311)
         best_order = (4,)
@@ -267,7 +268,7 @@ class TestLogisticRegressionResult(unittest.TestCase):
         rr = regressionresult.LogisticRegressionResult(
             x_offset_scale=np.ones([1, 2]),
             orders_and_results=make_orders_and_results(),
-            predictor=regress.NoninteractingMultivariatePredictor,
+            predictor=NoninteractingMultivariatePredictor,
             )
 
         np.random.seed(1640)
@@ -616,7 +617,7 @@ class TestRegressionResultsGetter(unittest.TestCase):
 
         self.assertIsInstance(
             predictor,
-            regress.NoninteractingMultivariatePredictor)
+            NoninteractingMultivariatePredictor)
         self.assertEqual(predictor.order, order)
 
     def test_find_prediction_gives_correct_keys(self):
@@ -705,7 +706,7 @@ def make_minimal_regressionresult(
     if orders_and_results is None:
         orders_and_results = make_orders_and_results()
     if predictor is None:
-        predictor = regress.NoninteractingMultivariatePredictor
+        predictor = NoninteractingMultivariatePredictor
     rr = regressionresult.RegressionResult(
         orders_and_results=orders_and_results,
         predictor=predictor,
@@ -723,7 +724,7 @@ def make_univariate_gaussian_regressionresult():
         y_name='y',
         orders_and_results=make_orders_and_results(gaussian=True),
         y_offset_scale=y_offset_scale,
-        predictor=regress.NoninteractingMultivariatePredictor,
+        predictor=NoninteractingMultivariatePredictor,
         )
     return rr
 

@@ -4,6 +4,7 @@ from bayesregress import likelihood, regress
 from bayesregress.prior import GaussianLogPrior
 from bayesregress.posterior import LogPosterior
 
+
 class MockLL(likelihood.LogLikelihood):
     def __init__(self, *args, **kwargs):
         super(MockLL, self).__init__(*args, **kwargs)
