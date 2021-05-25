@@ -57,3 +57,7 @@ def make_gaussian_log_posterior():
     return posterior
 
 
+def raise_convergence_error(x):
+    raise regress.ConvergenceError
+
+
