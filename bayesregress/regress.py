@@ -23,72 +23,9 @@ def make_regression_result(x_dict, y_dict, **kwargs):
     return factory.make_regression_result()
 
 
-class EvidenceFunctionLogger(object):
-    _failed_convergence = -np.inf
-
-    def __init__(self, function):
-        self.function = function
-        self.orders_and_results = dict()
-
-    def __call__(self, order):
-        if order in self.orders_and_results:
-            this_result = self.orders_and_results[order]
-        else:
-            try:
-                this_result = self.function(order)
-                self.orders_and_results[order] = this_result
-            except (ConvergenceError, HessianIllConditionedError) as e:
-                msg = "{}, order={}".format(
-                    e.__class__.__name__,
-                    order)
-                warnings.warn(msg)
-                this_result = {'log_evidence': self._failed_convergence}
-                self.orders_and_results[order] = this_result
-        return this_result['log_evidence']
-
-
-def maximize_discrete_exhaustively(function, initial_guess, max_order=10):
-    n_variables = len(initial_guess)
-    orders = range(max_order)
-    results = dict()
-    for x in itertools.product(orders, repeat=n_variables):
-        y = function(x)
-        results.update({y: x})
-    best_value = max(results)
-    best_x = results[best_value]
-    return best_x
-
-
-def maximize_discrete_relevant(function, initial_guess):
-    results = dict()
-    best_zn = tuple(initial_guess)
-    n_variables = len(initial_guess)
-
-    best_f = function(best_zn)
-    results.update({best_zn: best_f})
-    best_has_updated = True
-
-    while best_has_updated:
-        best_has_updated = False
-        for do in [-1, 1]:
-            for index in range(n_variables):
-                new_order = [i for i in best_zn]
-                new_order[index] = max(0, new_order[index] + do)
-                new_order = tuple(new_order)
-
-                if new_order not in results:
-                    f = function(new_order)
-                    results.update({tuple(new_order): f})
-                    if f > best_f:
-                        best_has_updated = True
-                        best_f = f
-                        best_zn = new_order
-
-    best_value = max(results.values())
-    best_x = [x for x in results if results[x] == best_value][0]
-    return best_x
-
-
+# TODO: You should split out the numerics (e.g. doing the regressions)
+# from the cosmetics (e.g. keeping track of the names)
+# This should probably be done both here and in regressionresult
 class RegressionResultsGetter(object):
     predictor_factory = NoninteractingMultivariatePredictor
 
@@ -312,6 +249,73 @@ class BayesianRegressor(object):
             raise ConvergenceError("Not at a local minimum!!")
 
         return hess
+
+
+class EvidenceFunctionLogger(object):
+    _failed_convergence = -np.inf
+
+    def __init__(self, function):
+        self.function = function
+        self.orders_and_results = dict()
+
+    def __call__(self, order):
+        if order in self.orders_and_results:
+            this_result = self.orders_and_results[order]
+        else:
+            try:
+                this_result = self.function(order)
+                self.orders_and_results[order] = this_result
+            except (ConvergenceError, HessianIllConditionedError) as e:
+                msg = "{}, order={}".format(
+                    e.__class__.__name__,
+                    order)
+                warnings.warn(msg)
+                this_result = {'log_evidence': self._failed_convergence}
+                self.orders_and_results[order] = this_result
+        return this_result['log_evidence']
+
+
+def maximize_discrete_exhaustively(function, initial_guess, max_order=10):
+    n_variables = len(initial_guess)
+    orders = range(max_order)
+    results = dict()
+    for x in itertools.product(orders, repeat=n_variables):
+        y = function(x)
+        results.update({y: x})
+    best_value = max(results)
+    best_x = results[best_value]
+    return best_x
+
+
+def maximize_discrete_relevant(function, initial_guess):
+    results = dict()
+    best_zn = tuple(initial_guess)
+    n_variables = len(initial_guess)
+
+    best_f = function(best_zn)
+    results.update({best_zn: best_f})
+    best_has_updated = True
+
+    while best_has_updated:
+        best_has_updated = False
+        for do in [-1, 1]:
+            for index in range(n_variables):
+                new_order = [i for i in best_zn]
+                new_order[index] = max(0, new_order[index] + do)
+                new_order = tuple(new_order)
+
+                if new_order not in results:
+                    f = function(new_order)
+                    results.update({tuple(new_order): f})
+                    if f > best_f:
+                        best_has_updated = True
+                        best_f = f
+                        best_zn = new_order
+
+    best_value = max(results.values())
+    best_x = [x for x in results if results[x] == best_value][0]
+    return best_x
+
 
 
 class ConvergenceError(Exception):
