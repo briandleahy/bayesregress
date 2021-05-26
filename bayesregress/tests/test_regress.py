@@ -369,22 +369,48 @@ class TestRegressionResultsGetter(unittest.TestCase):
 
     def test_init_sets_x_offset_scale_if_not_set(self):
         getter = make_regression_results_getter()
-        self.assertIsInstance(getter.x_offset_scale, dict)
+        self.assertIsInstance(getter.x_offset_scale, np.ndarray)
+        self.assertEqual(getter.x_offset_scale.ndim, 2)
 
-    def test_init_stores_x_offset_scale_if_set(self):
+    def test_init_stores_x_offset_scale_if_set_as_dict(self):
         np.random.seed(1622)
         x = np.random.randn(100) * 10
         y = np.random.randn(x.size)
 
         x_dict = {'x': x}
         y_dict = {'y': y}
-        x_offset_scale = {k: (0, 1) for k in x_dict}
+        offset = 0
+        scale = 1
+        x_offset_scale = {k: (offset, scale) for k in x_dict}
 
         getter = regress.RegressionResultsGetter(
             x_dict,
             y_dict,
             x_offset_scale=x_offset_scale.copy())
-        self.assertEqual(getter.x_offset_scale, x_offset_scale)
+        self.assertEqual(getter.x_offset_scale.shape[0], len(x_offset_scale))
+        for check in getter.x_offset_scale:
+            self.assertEqual(check[0], offset)
+            self.assertEqual(check[1], scale)
+
+    def test_init_stores_x_offset_scale_if_set_as_list(self):
+        np.random.seed(1622)
+        x = np.random.randn(100) * 10
+        y = np.random.randn(x.size)
+
+        x_dict = {'x': x}
+        y_dict = {'y': y}
+        offset = 0
+        scale = 1
+        x_offset_scale = [(offset, scale)]
+
+        getter = regress.RegressionResultsGetter(
+            x_dict,
+            y_dict,
+            x_offset_scale=x_offset_scale)
+        self.assertEqual(getter.x_offset_scale.shape[0], len(x_offset_scale))
+        for check in getter.x_offset_scale:
+            self.assertEqual(check[0], offset)
+            self.assertEqual(check[1], scale)
 
     def test_find_x_offset_scale(self):
         np.random.seed(1401)
@@ -398,9 +424,9 @@ class TestRegressionResultsGetter(unittest.TestCase):
             for k in x_names}
         getter = make_regression_results_getter(x_dict=x_dict)
         offset_scale = getter._find_x_offset_and_scale()
-        for k in getter.x_names:
-            self.assertAlmostEqual(offset_scale[k][0], offsets[k], places=1)
-            self.assertAlmostEqual(offset_scale[k][1], scales[k], places=1)
+        for i, k in enumerate(getter.x_names):
+            self.assertAlmostEqual(offset_scale[i][0], offsets[k], places=1)
+            self.assertAlmostEqual(offset_scale[i][1], scales[k], places=1)
 
     def test_find_y_offset_scale_when_gaussian(self):
         np.random.seed(1401)

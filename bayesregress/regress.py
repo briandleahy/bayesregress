@@ -41,7 +41,9 @@ class RegressionResultsGetter(object):
 
         if x_offset_scale is None:
             x_offset_scale = self._find_x_offset_and_scale()
-        self.x_offset_scale = x_offset_scale
+        elif isinstance(x_offset_scale, dict):
+            x_offset_scale = self._cast_x_offset_scale_to_array(x_offset_scale)
+        self.x_offset_scale = np.asarray(x_offset_scale)
         self.y_offset_scale = self._find_y_offset_and_scale()
         self.likelihood_class, self.result_class = self._select_classes()
         self._n_variables = len(self.x_names)
@@ -50,7 +52,7 @@ class RegressionResultsGetter(object):
         orders_and_results = self._get_orders_and_results()
 
         kwargs = {
-            "x_offset_scale": self._cast_x_offset_scale_to_array(),
+            "x_offset_scale": self.x_offset_scale,
             "x_names": self.x_names,
             "y_name": self.y_name,
             "orders_and_results": orders_and_results,
@@ -63,21 +65,25 @@ class RegressionResultsGetter(object):
         return result
 
     def _find_x_offset_and_scale(self):
-        return {k: (v.mean(), v.std()) for k, v in self.x_dict.items()}
+        out = list()
+        for k in self.x_names:
+            v = self.x_dict[k]
+            out.append((v.mean(), v.std()))
+        return out
 
     def _find_y_offset_and_scale(self):
         if 'gaussian' == self.regression_type:
             y = self.y_dict[self.y_name]
             return np.array([y.mean(), y.std()])
 
-    def _cast_x_offset_scale_to_array(self):
-        return np.array([self.x_offset_scale[k] for k in self.x_names])
+    def _cast_x_offset_scale_to_array(self, x_offset_scale):
+        return np.array([x_offset_scale[k] for k in self.x_names])
 
     def _normalize_x(self):
         x = np.transpose([self.x_dict[k] for k in self.x_names])
-        for i, k in enumerate(self.x_names):
-            x[:, i] -= self.x_offset_scale[k][0]
-            x[:, i] /= self.x_offset_scale[k][1]
+        for i, (offset, scale) in enumerate(self.x_offset_scale):
+            x[:, i] -= offset
+            x[:, i] /= scale
         return x
 
     def _normalize_y(self):
