@@ -26,6 +26,14 @@ def make_regression_result(x_dict, y_dict, **kwargs):
 # TODO: You should split out the numerics (e.g. doing the regressions)
 # from the cosmetics (e.g. keeping track of the names)
 # This should probably be done both here and in regressionresult
+# Do this by:
+# 1. Replacing x_dict, y_dict with x, y
+# 2. Removing x_names, y_names from RRGetter
+# 3. Moving all the logic for going from dictionaries to scales etc
+#    into make_regression_result (_cast_x_offset_scale_to_array)
+# 4. having make_regression_result set the x_names, not the getter
+# To do this, you will have to change *all* the tests to use the utility
+# `make_regression_result` function.
 class RegressionResultsGetter(object):
     predictor_factory = NoninteractingMultivariatePredictor
 
@@ -39,6 +47,9 @@ class RegressionResultsGetter(object):
         self.x_names = list(self.x_dict.keys())
         self.y_name = list(self.y_dict.keys())[0]
 
+        self.x = np.transpose([self.x_dict[k] for k in self.x_names])
+        self.y = self.y_dict[self.y_name]
+
         if x_offset_scale is None:
             x_offset_scale = self._find_x_offset_and_scale()
         elif isinstance(x_offset_scale, dict):
@@ -46,7 +57,7 @@ class RegressionResultsGetter(object):
         self.x_offset_scale = np.asarray(x_offset_scale)
         self.y_offset_scale = self._find_y_offset_and_scale()
         self.likelihood_class, self.result_class = self._select_classes()
-        self._n_variables = len(self.x_names)
+        self._n_variables = len(self.x_offset_scale)
 
     def make_regression_result(self):
         orders_and_results = self._get_orders_and_results()
@@ -65,26 +76,21 @@ class RegressionResultsGetter(object):
         return result
 
     def _find_x_offset_and_scale(self):
-        out = list()
-        for k in self.x_names:
-            v = self.x_dict[k]
-            out.append((v.mean(), v.std()))
-        return out
+        return np.array([(xi.mean(), xi.std()) for xi in self.x.T])
 
     def _find_y_offset_and_scale(self):
         if 'gaussian' == self.regression_type:
-            y = self.y_dict[self.y_name]
-            return np.array([y.mean(), y.std()])
+            return np.array([self.y.mean(), self.y.std()])
 
     def _cast_x_offset_scale_to_array(self, x_offset_scale):
         return np.array([x_offset_scale[k] for k in self.x_names])
 
     def _normalize_x(self):
-        x = np.transpose([self.x_dict[k] for k in self.x_names])
+        z = self.x.copy()
         for i, (offset, scale) in enumerate(self.x_offset_scale):
-            x[:, i] -= offset
-            x[:, i] /= scale
-        return x
+            z[:, i] -= offset
+            z[:, i] /= scale
+        return z
 
     def _normalize_y(self):
         y_raw = list(self.y_dict.values())[0]
