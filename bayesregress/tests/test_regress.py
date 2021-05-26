@@ -15,7 +15,7 @@ MEDTOLS = {"atol": 1e-6, "rtol": 1e-6}
 
 
 class TestBayesRegressor(unittest.TestCase):
-    def test_init_stores_posterior(self):  # FIXME
+    def test_init_stores_posterior(self):
         ll = make_gaussian_log_posterior()
         regressor = regress.BayesianRegressor(ll)
         self.assertIs(regressor.log_posterior, ll)
@@ -350,28 +350,6 @@ class TestOptimizeDiscreteRelevant(unittest.TestCase):
 
 
 class TestRegressionResultsGetter(unittest.TestCase):
-    def test_init_stores_x_names(self):
-        np.random.seed(1347)
-        npts = 31
-
-        x_names = ('a', 'b', 'c', 'd')
-        getter = make_regression_results_getter(x_names=x_names)
-
-        self.assertIsInstance(getter.x_names, (list, tuple))
-        self.assertEqual(set(getter.x_names), set(x_names))
-
-    def test_init_stores_y_name(self):
-        np.random.seed(1347)
-        npts = 31
-        y_name = 'the-y-name'
-        getter = make_regression_results_getter(y_name=y_name)
-        self.assertEqual(y_name, getter.y_name)
-
-    def test_init_sets_x_offset_scale_if_not_set(self):
-        getter = make_regression_results_getter()
-        self.assertIsInstance(getter.x_offset_scale, np.ndarray)
-        self.assertEqual(getter.x_offset_scale.ndim, 2)
-
     def test_init_stores_x_offset_scale_if_set_as_dict(self):
         np.random.seed(1622)
         x = np.random.randn(100) * 10
@@ -505,23 +483,6 @@ class TestRegressionResultsGetter(unittest.TestCase):
             for k in keys:
                 self.assertIn(k, entry)
 
-    def test_make_regression_result_when_gaussian(self):
-        getter = make_regression_results_getter(x_names=('a', 'b'))
-        rr = getter.make_regression_result()
-
-        self.assertIsInstance(rr, regress.GaussianRegressionResult)
-
-    def test_make_regression_result_when_bernoulli(self):
-        npts = 10
-        getter = make_regression_results_getter(
-            x_names=('a', 'b'),
-            y_dict={'y': np.random.choice([True, False], size=npts)},
-            npts=npts,
-            regression_type='bernoulli')
-        rr = getter.make_regression_result()
-
-        self.assertIsInstance(rr, regress.LogisticRegressionResult)
-
     def test_strip_convergence_errors_from(self):
         getter = make_regression_results_getter()
 
@@ -541,19 +502,6 @@ class TestRegressionResultsGetter(unittest.TestCase):
         self.assertEqual(set(stripped.keys()), set(success_orders))
         for result in stripped.values():
             self.assertNotEqual(result['log_evidence'], failed_evidence)
-
-    def test_result_recapitulates_data(self):
-        np.random.seed(1458)
-        x = np.random.randn(100)
-        y = 2 * x + 0.3
-        noise = 1e-4 * np.random.randn(x.size)
-        getter = regress.RegressionResultsGetter(
-            {'x': x}, {'y': y + noise}, max_order=2)
-        rr = getter.make_regression_result()
-        prediction = rr.predict_for_map_model(x.reshape(-1, 1))
-
-        for a, b in zip(prediction, y):
-            self.assertAlmostEqual(a, b, places=3)
 
     def test_make_predictor(self):
         nvars = 2
@@ -629,9 +577,69 @@ class TestRegressionResultsGetter(unittest.TestCase):
             correct_post_var, **tols))
 
 
+class TestRegress(unittest.TestCase):
+    def test_stores_x_names(self):
+        np.random.seed(1347)
+        npts = 31
+
+        x_names = ('a', 'b', 'c', 'd')
+        rr = perform_simple_regression(x_names=x_names)
+
+        self.assertIsInstance(rr.x_names, (list, tuple))
+        self.assertEqual(set(rr.x_names), set(x_names))
+
+    def test_stores_y_name(self):
+        np.random.seed(1347)
+        npts = 31
+        y_name = 'the-y-name'
+        rr = perform_simple_regression(y_name=y_name)
+        self.assertEqual(y_name, rr.y_name)
+
+    def test_sets_x_offset_scale_if_not_set(self):
+        rr = perform_simple_regression()
+        self.assertIsInstance(rr.x_offset_scale, np.ndarray)
+        self.assertEqual(rr.x_offset_scale.ndim, 2)
+
+    def test_default_is_gaussian(self):
+        rr = perform_simple_regression(x_names=('a', 'b'))
+        self.assertIsInstance(rr, regress.GaussianRegressionResult)
+
+    def test_logistic_returns_logistic(self):
+        npts = 10
+        rr = perform_simple_regression(
+            x_names=('a', 'b'),
+            y_dict={'y': np.random.choice([True, False], size=npts)},
+            npts=npts,
+            regression_type='bernoulli')
+        self.assertIsInstance(rr, regress.LogisticRegressionResult)
+
+    def test_result_recapitulates_data(self):
+        np.random.seed(1458)
+        x = np.random.randn(100)
+        y = 2 * x + 0.3
+        noise = 1e-4 * np.random.randn(x.size)
+        rr = regress.make_regression_result(
+            {'x': x}, {'y': y + noise}, max_order=2)
+        prediction = rr.predict_for_map_model(x.reshape(-1, 1))
+
+        for a, b in zip(prediction, y):
+            self.assertAlmostEqual(a, b, places=3)
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #                              Helper functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def perform_simple_regression(
+        x_names=('a', 'b'), y_name='y', npts=31, x_dict=None, y_dict=None,
+        regression_type='gaussian'):
+    if x_dict is None:
+        x_dict = {k: np.random.randn(npts) for k in x_names}
+    if y_dict is None:
+        y_dict = {y_name: np.random.randn(npts)}
+    return regress.make_regression_result(
+        x_dict, y_dict, max_order=0, regression_type=regression_type)
 
 
 def make_regression_results_getter(
