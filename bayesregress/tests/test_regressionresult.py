@@ -140,7 +140,7 @@ class TestRegressionResult(unittest.TestCase):
         for err, lower_bound in zip(errs_all_models, lower_bounds):
             self.assertGreaterEqual(err, lower_bound)
 
-    def test_predict_model_scaled(self):
+    def test_predict_model_scaled_calls_correct_predictor(self):
         np.random.seed(1346)
         rr = make_minimal_regressionresult()
 
@@ -166,6 +166,33 @@ class TestRegressionResult(unittest.TestCase):
 
         for v1, v2 in zip(correct.ravel(), scaled.ravel()):
             self.assertAlmostEqual(v1, v2, places=11)
+
+    def test_predict_raises_error_if_x_wrong_shape(self):
+        n_variables = 4
+        n_data_points = 100
+
+        x_offset_scale = [(0, 1) for _ in range(n_variables)]
+        add_params = 2
+        orders_and_results = {
+            (0,) * n_variables: {
+                'result': MockScipyOptimizeResult(2),
+                'posterior_covariance': np.eye(2),
+                'log_evidence': np.random.randn(),
+                }
+            }
+        rr = regressionresult.GaussianRegressionResult(
+            x_offset_scale=x_offset_scale,
+            y_offset_scale=(0, 1),
+            orders_and_results=orders_and_results,
+            predictor=NoninteractingMultivariatePredictor,
+            )
+        wrong_shape = (n_data_points, n_variables - 1)
+        self.assertRaisesRegex(
+            ValueError,
+            'shape',
+            rr.predict_for_model,
+            np.random.standard_normal(wrong_shape),
+            (0,) * n_variables)
 
 
 # to test in subclasses:
