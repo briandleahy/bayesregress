@@ -117,10 +117,17 @@ class RegressionResult(object):
         return orders[best_index]
 
     def __repr__(self):
+        y_name = (self.y_name if self.y_name is not None else "1 variable")
+        if self.x_names is None:
+            n_x = len(self.x_offset_scale)
+            suffix = 's' if n_x > 1 else ''
+            x_names = f"{len(self.x_offset_scale)} variable" + suffix
+        else:
+            x_names = self.x_names
         out = "<{} for {} vs {} at {}>".format(
             self.__class__.__name__,
-            self.y_name,
-            self.x_names,
+            y_name,
+            x_names,
             hex(id(self)))
         return out
 

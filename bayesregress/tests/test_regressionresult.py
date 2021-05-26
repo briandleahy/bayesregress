@@ -52,7 +52,7 @@ class TestRegressionResult(unittest.TestCase):
         found = rr._find_map_model_order()
         self.assertEqual(found, best_order)
 
-    def test_repr(self):
+    def test_repr_uses_names_when_provided(self):
         x_names = ['var1', 'var2', 'var3']
         y_name = 'dependent-var'
         rr = regressionresult.RegressionResult(
@@ -64,6 +64,18 @@ class TestRegressionResult(unittest.TestCase):
         the_repr = repr(rr)
         for word in should_be_in:
             self.assertIn(word, the_repr)
+
+    def test_repr_omits_names_when_not_provided(self):
+        for n in range(1, 4):
+            x_offset_scale = [(0, 1) for _ in range(n)]
+            rr = regressionresult.RegressionResult(
+                x_offset_scale=x_offset_scale,
+                orders_and_results=make_orders_and_results())
+
+            should_be_in = ['1 variable', f'{n} variable', 'RegressionResult']
+            the_repr = repr(rr)
+            for word in should_be_in:
+                self.assertIn(word, the_repr)
 
     def test_unnormalize_prediction_raises_error(self):
         rr = make_minimal_regressionresult()
