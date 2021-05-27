@@ -18,10 +18,10 @@ from bayesregress.regressionresult import (
     )
 
 
-def make_regression_result(x, y, **kwargs):
+def fit_data(x, y, **kwargs):
     args, kwargs, names = preprocess_inputs(x, y, **kwargs)
     factory = RegressionResultsGetter(*args, **kwargs)
-    rr = factory.make_regression_result()
+    rr = factory.fit_data()
     set_names(rr, names)
     return rr
 
@@ -83,7 +83,7 @@ class RegressionResultsGetter(object):
         self.likelihood_class, self.result_class = self._select_classes()
         self._n_variables = len(self.x_offset_scale)
 
-    def make_regression_result(self):
+    def fit_data(self):
         orders_and_results = self._get_orders_and_results()
 
         kwargs = {

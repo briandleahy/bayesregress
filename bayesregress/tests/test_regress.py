@@ -576,7 +576,7 @@ class TestRegressionResultsGetter(unittest.TestCase):
 
         getter = regress.RegressionResultsGetter(
             x, y, max_order=max_order, regression_type='gaussian')
-        rr = getter.make_regression_result()
+        rr = getter.fit_data()
 
         for order in rr.orders_and_results:
             self.assertLessEqual(max(order), max_order)
@@ -623,7 +623,7 @@ class TestRegress(unittest.TestCase):
         x = np.random.randn(100)
         y = 2 * x + 0.3
         noise = 1e-4 * np.random.randn(x.size)
-        rr = regress.make_regression_result(
+        rr = regress.fit_data(
             {'x': x}, {'y': y + noise}, max_order=2)
         prediction = rr.predict_for_map_model(x.reshape(-1, 1))
 
@@ -641,7 +641,7 @@ class TestRegress(unittest.TestCase):
         scale = 1
         x_offset_scale = {k: (offset, scale) for k in x_dict}
 
-        rr = regress.make_regression_result(
+        rr = regress.fit_data(
             x_dict,
             y_dict,
             x_offset_scale=x_offset_scale.copy(),
@@ -665,7 +665,7 @@ def perform_simple_regression(
         x_dict = {k: np.random.randn(npts) for k in x_names}
     if y_dict is None:
         y_dict = {y_name: np.random.randn(npts)}
-    return regress.make_regression_result(
+    return regress.fit_data(
         x_dict, y_dict, max_order=0, regression_type=regression_type)
 
 
