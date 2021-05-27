@@ -18,44 +18,68 @@ from bayesregress.regressionresult import (
     )
 
 
-def make_regression_result(x_dict, y_dict, **kwargs):
-    factory = RegressionResultsGetter(x_dict, y_dict, **kwargs)
-    return factory.make_regression_result()
+def make_regression_result(x, y, **kwargs):
+    args, kwargs, names = preprocess_inputs(x, y, **kwargs)
+    factory = RegressionResultsGetter(*args, **kwargs)
+    rr = factory.make_regression_result()
+    set_names(rr, names)
+    return rr
 
 
-# TODO: You should split out the numerics (e.g. doing the regressions)
-# from the cosmetics (e.g. keeping track of the names)
-# This should probably be done both here and in regressionresult
-# Do this by:
-# 1. Replacing x_dict, y_dict with x, y
-# 2. Removing x_names, y_names from RRGetter
-# 3. Moving all the logic for going from dictionaries to scales etc
-#    into make_regression_result (_cast_x_offset_scale_to_array)
-# 4. having make_regression_result set the x_names, not the getter
-# To do this, you will have to change *all* the tests to use the utility
-# `make_regression_result` function.
+def preprocess_inputs(x, y, x_offset_scale=None, y_offset_scale=None, **kwargs):
+    if isinstance(x, dict):
+        x_names = list(x.keys())
+        x = np.transpose([x[k] for k in x_names])
+    else:
+        x_names = None
+        x = np.asarray(x)
+
+    if isinstance(y, dict):
+        y_name = list(y.keys())[0]
+        y = y[y_name]
+        y = np.asarray(y)
+    else:
+        y_names = None
+        y = np.asarray(y)
+
+    if isinstance(x_offset_scale, dict):
+        x_offset_scale = np.array([x_offset_scale[k] for k in x_names])
+    if isinstance(y_offset_scale, dict):
+        y_offset_scale = np.array([y_offset_scale[k] for k in y_names])
+
+    args = (x, y)
+    new_kwargs = {
+        'x_offset_scale': x_offset_scale,
+        'y_offset_scale': y_offset_scale,
+        }
+    kwargs.update(new_kwargs)
+
+    names = {'x_names': x_names, 'y_name': y_name}
+    return args, kwargs, names
+
+
+def set_names(regression_result, names):
+    regression_result.x_names = names['x_names']
+    regression_result.y_name = names['y_name']
+
+
 class RegressionResultsGetter(object):
     predictor_factory = NoninteractingMultivariatePredictor
 
-    def __init__(self, x_dict, y_dict, regression_type='gaussian',
-                 x_offset_scale=None, max_order=10):
-        self.x_dict = x_dict
-        self.y_dict = y_dict
+    def __init__(self, x, y, regression_type='gaussian',
+                 x_offset_scale=None, y_offset_scale=None, max_order=10):
+        self.x = x
+        self.y = y
         self.regression_type = regression_type
         self.max_order = max_order
 
-        self.x_names = list(self.x_dict.keys())
-        self.y_name = list(self.y_dict.keys())[0]
-
-        self.x = np.transpose([self.x_dict[k] for k in self.x_names])
-        self.y = self.y_dict[self.y_name]
-
         if x_offset_scale is None:
             x_offset_scale = self._find_x_offset_and_scale()
-        elif isinstance(x_offset_scale, dict):
-            x_offset_scale = self._cast_x_offset_scale_to_array(x_offset_scale)
         self.x_offset_scale = np.asarray(x_offset_scale)
-        self.y_offset_scale = self._find_y_offset_and_scale()
+        if y_offset_scale is None:
+            y_offset_scale = self._find_y_offset_and_scale()
+        self.y_offset_scale = np.asarray(y_offset_scale)
+
         self.likelihood_class, self.result_class = self._select_classes()
         self._n_variables = len(self.x_offset_scale)
 
@@ -64,8 +88,6 @@ class RegressionResultsGetter(object):
 
         kwargs = {
             "x_offset_scale": self.x_offset_scale,
-            "x_names": self.x_names,
-            "y_name": self.y_name,
             "orders_and_results": orders_and_results,
             "predictor": self.predictor_factory,
             }
@@ -82,9 +104,6 @@ class RegressionResultsGetter(object):
         if 'gaussian' == self.regression_type:
             return np.array([self.y.mean(), self.y.std()])
 
-    def _cast_x_offset_scale_to_array(self, x_offset_scale):
-        return np.array([x_offset_scale[k] for k in self.x_names])
-
     def _normalize_x(self):
         z = self.x.copy()
         for i, (offset, scale) in enumerate(self.x_offset_scale):
@@ -93,7 +112,8 @@ class RegressionResultsGetter(object):
         return z
 
     def _normalize_y(self):
-        y_raw = list(self.y_dict.values())[0]
+        y_raw = self.y
+        # FIXME the scaling knows about the regression result scaling!
         if self.regression_type == 'gaussian':
             y_mean_std = [y_raw.mean(), y_raw.std()]
             y_normalized = (y_raw - y_mean_std[0]) / y_mean_std[1]
@@ -109,7 +129,7 @@ class RegressionResultsGetter(object):
                 logger, initial_guess, max_order=self.max_order)
         else:
             _ = maximize_discrete_relevant(
-                logger, initial_guess)
+                logger, initial_guess, max_order=self.max_order)
         orders_and_results = logger.orders_and_results
         return self._strip_convergence_errors_from(orders_and_results)
 
@@ -299,7 +319,7 @@ def maximize_discrete_exhaustively(function, initial_guess, max_order=10):
     return best_x
 
 
-def maximize_discrete_relevant(function, initial_guess):
+def maximize_discrete_relevant(function, initial_guess, max_order=10):
     results = dict()
     best_zn = tuple(initial_guess)
     n_variables = len(initial_guess)
@@ -316,7 +336,7 @@ def maximize_discrete_relevant(function, initial_guess):
                 new_order[index] = max(0, new_order[index] + do)
                 new_order = tuple(new_order)
 
-                if new_order not in results:
+                if new_order not in results and max(new_order) <= max_order:
                     f = function(new_order)
                     results.update({tuple(new_order): f})
                     if f > best_f:

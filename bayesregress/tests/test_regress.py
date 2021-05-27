@@ -348,43 +348,30 @@ class TestOptimizeDiscreteRelevant(unittest.TestCase):
         # check +- 1 order around it:
         self.assertGreater(len(logger.orders_and_results), 2 * nvars + 1)
 
+    def test_respects_max_order(self):
+        nvars = 4
+        correct = (8,) * nvars
+        f = lambda order: -np.sum((np.array(order) - correct)**2)
+        guess = (0,) * nvars
+
+        for max_order in range(6):
+            best = regress.maximize_discrete_relevant(
+                f, guess, max_order=max_order)
+            self.assertEqual(max(best), max_order)
+
 
 class TestRegressionResultsGetter(unittest.TestCase):
-    def test_init_stores_x_offset_scale_if_set_as_dict(self):
-        np.random.seed(1622)
-        x = np.random.randn(100) * 10
-        y = np.random.randn(x.size)
-
-        x_dict = {'x': x}
-        y_dict = {'y': y}
-        offset = 0
-        scale = 1
-        x_offset_scale = {k: (offset, scale) for k in x_dict}
-
-        getter = regress.RegressionResultsGetter(
-            x_dict,
-            y_dict,
-            x_offset_scale=x_offset_scale.copy())
-        self.assertEqual(getter.x_offset_scale.shape[0], len(x_offset_scale))
-        for check in getter.x_offset_scale:
-            self.assertEqual(check[0], offset)
-            self.assertEqual(check[1], scale)
-
     def test_init_stores_x_offset_scale_if_set_as_list(self):
         np.random.seed(1622)
         x = np.random.randn(100) * 10
         y = np.random.randn(x.size)
 
-        x_dict = {'x': x}
-        y_dict = {'y': y}
         offset = 0
         scale = 1
         x_offset_scale = [(offset, scale)]
 
         getter = regress.RegressionResultsGetter(
-            x_dict,
-            y_dict,
-            x_offset_scale=x_offset_scale)
+            x, y, x_offset_scale=x_offset_scale)
         self.assertEqual(getter.x_offset_scale.shape[0], len(x_offset_scale))
         for check in getter.x_offset_scale:
             self.assertEqual(check[0], offset)
@@ -394,24 +381,24 @@ class TestRegressionResultsGetter(unittest.TestCase):
         np.random.seed(1401)
 
         npts = int(1e5)  # sqrt(N) = gives almostequal to 1 place
-        x_names = {'a', 'b', 'c'}
-        scales = {k: np.exp(np.random.randn()) for k in x_names}
-        offsets = {k: 5 * np.random.randn() for k in x_names}
-        x_dict = {
-            k: scales[k] * np.random.randn(npts) + offsets[k]
-            for k in x_names}
-        getter = make_regression_results_getter(x_dict=x_dict)
+        nvars = 3
+        scales = [np.exp(np.random.randn()) for _ in range(nvars)]
+        offsets = [5 * np.random.randn() for _ in range(nvars)]
+        x = np.transpose([
+            scale * np.random.randn(npts) + offset
+            for scale, offset in zip(scales, offsets)])
+        getter = make_regression_results_getter(x=x)
         offset_scale = getter._find_x_offset_and_scale()
-        for i, k in enumerate(getter.x_names):
-            self.assertAlmostEqual(offset_scale[i][0], offsets[k], places=1)
-            self.assertAlmostEqual(offset_scale[i][1], scales[k], places=1)
+        for i in range(nvars):
+            self.assertAlmostEqual(offset_scale[i][0], offsets[i], places=1)
+            self.assertAlmostEqual(offset_scale[i][1], scales[i], places=1)
 
     def test_find_y_offset_scale_when_gaussian(self):
         np.random.seed(1401)
 
         getter = make_regression_results_getter()
         offset, scale = getter._find_y_offset_and_scale()
-        y = list(getter.y_dict.values())[0]
+        y = getter.y.copy()
 
         self.assertEqual(offset, y.mean())
         self.assertEqual(scale, y.std())
@@ -426,17 +413,17 @@ class TestRegressionResultsGetter(unittest.TestCase):
         np.random.seed(1410)
 
         npts = int(1e5)
-        x_names = {'a', 'b', 'c'}
-        scales = {k: np.exp(np.random.randn()) for k in x_names}
-        offsets = {k: 5 * np.random.randn() for k in x_names}
-        x_dict = {
-            k: scales[k] * np.random.randn(npts) + offsets[k]
-            for k in x_names}
-        getter = make_regression_results_getter(x_dict=x_dict)
+        nvars = 3
+        scales = [np.exp(np.random.randn()) for _ in range(nvars)]
+        offsets = [5 * np.random.randn() for _ in range(nvars)]
+        x = np.transpose([
+            scale * np.random.randn(npts) + offset
+            for scale, offset in zip(scales, offsets)])
+        getter = make_regression_results_getter(x=x)
 
         z = getter._normalize_x()
-        self.assertEqual(z.shape, (npts, len(x_names)))
 
+        self.assertEqual(z.shape, (npts, nvars))
         self.assertTrue(np.allclose(z.mean(axis=0), 0, **TOLS))
         self.assertTrue(np.allclose(z.std(axis=0), 1, **TOLS))
 
@@ -449,8 +436,8 @@ class TestRegressionResultsGetter(unittest.TestCase):
         np.random.seed(1427)
 
         npts = int(1e2)
-        y_dict = {'y': 10 + np.random.randn(npts) * 3}
-        getter = make_regression_results_getter(y_dict=y_dict, npts=npts)
+        y = 10 + np.random.randn(npts) * 3
+        getter = make_regression_results_getter(y=y, npts=npts)
 
         z = getter._normalize_y()
 
@@ -463,9 +450,8 @@ class TestRegressionResultsGetter(unittest.TestCase):
 
         npts = int(1e2)
         y = np.random.choice([0, 1], size=npts, p=[0.1, 0.9])
-        y_dict = {'y': y}
         getter = make_regression_results_getter(
-            y_dict=y_dict, npts=npts, regression_type='bernoulli')
+            y=y, npts=npts, regression_type='bernoulli')
 
         z = getter._normalize_y()
 
@@ -473,7 +459,7 @@ class TestRegressionResultsGetter(unittest.TestCase):
         self.assertTrue(np.all(z == y))
 
     def test_get_orders_and_results_returns_dict_with_correct_elements(self):
-        getter = make_regression_results_getter(x_names=('a', 'b'))
+        getter = make_regression_results_getter(max_order=1)
         out = getter._get_orders_and_results()
 
         self.assertIsInstance(out, dict)
@@ -504,54 +490,58 @@ class TestRegressionResultsGetter(unittest.TestCase):
             self.assertNotEqual(result['log_evidence'], failed_evidence)
 
     def test_make_predictor(self):
-        nvars = 2
-        x_names = tuple('abc'[:nvars])
-        getter = make_regression_results_getter(x_names=x_names)
+        for nvars in [2, 3, 4, 9]:
+            npts = 55
+            x = np.ones((npts, nvars))
+            getter = make_regression_results_getter(x=x)
 
-        order = (1,) * nvars
-        predictor = getter._make_predictor(order)
+            order = (1,) * nvars
+            predictor = getter._make_predictor(order)
 
-        self.assertIsInstance(
-            predictor,
-            predictors.NoninteractingMultivariatePredictor)
-        self.assertEqual(predictor.order, order)
+            self.assertIsInstance(
+                predictor,
+                predictors.NoninteractingMultivariatePredictor)
+            self.assertEqual(predictor.order, order)
 
     def test_find_prediction_gives_correct_keys(self):
         np.random.seed(1222)
-        nvars = 2
-        x_names = tuple('abc'[:nvars])
-        getter = make_regression_results_getter(x_names=x_names)
+        getter = make_regression_results_getter()
 
-        order = (1,) * nvars
+        order = (1,) * getter.x.shape[1]
         prediction = getter.find_prediction(order)
         keys = {'log_evidence', 'result', 'posterior_covariance'}
         self.assertEqual(set(prediction.keys()), keys)
 
     def test_find_prediction_gives_correct_answer(self):
         # moderately correlated x-data
-        x_dict = {
-            'a': np.array([
-                0.17491131, 2.71542135, 1.15516316, 0.13247331, -0.60474454,
-                0.02829037, 2.29199515, -0.28914556, -1.13247949, -0.71725676,
-                0.8041879, 1.0750634, 1.05186973, 0.8297467, 0.96021319,
-                -1.56828591, 1.31930697, -0.86527756, 1.55604893,
-                -0.83317568]),
-            'b': np.array([
-                -1.7010468, 0.76340537, -1.13147175, -0.88684698, -0.64565894,
-                0.3861254, -0.59320056, 0.06797931, 0.54257044, -0.54346153,
-                0.51441891, 0.06184495, -0.11528416, -1.90672781, -0.13664491,
-                -0.08195446, 0.32005902, 0.57971185, -0.04987975, 0.07618379])
-            }
-        # and moderately correlated y
-        y_dict = {'y': np.array([
+        x = np.array([
+            [ 0.17491131, -1.7010468 ],
+            [ 2.71542135,  0.76340537],
+            [ 1.15516316, -1.13147175],
+            [ 0.13247331, -0.88684698],
+            [-0.60474454, -0.64565894],
+            [ 0.02829037,  0.3861254 ],
+            [ 2.29199515, -0.59320056],
+            [-0.28914556,  0.06797931],
+            [-1.13247949,  0.54257044],
+            [-0.71725676, -0.54346153],
+            [ 0.8041879 ,  0.51441891],
+            [ 1.0750634 ,  0.06184495],
+            [ 1.05186973, -0.11528416],
+            [ 0.8297467 , -1.90672781],
+            [ 0.96021319, -0.13664491],
+            [-1.56828591, -0.08195446],
+            [ 1.31930697,  0.32005902],
+            [-0.86527756,  0.57971185],
+            [ 1.55604893, -0.04987975],
+            [-0.83317568,  0.07618379]])
+        y = np.array([
             -3.40253289, 2.149867, 1.13975773, 1.10042304, -2.08643635,
             2.09155433, 0.06771938, -0.5573923, -2.74462204, 0.68713746,
             1.75997636, -1.42007755, 0.28118766, 1.09699657, 0.60650905,
-            -3.62795094, -3.38429385, 1.36664075, -0.22670035, 1.81833603])}
+            -3.62795094, -3.38429385, 1.36664075, -0.22670035, 1.81833603])
         getter = regress.RegressionResultsGetter(
-                x_dict=x_dict,
-                y_dict=y_dict,
-                regression_type='gaussian')
+                x, y, regression_type='gaussian')
         order = (2, 1)
         prediction = getter.find_prediction(order)
 
@@ -575,6 +565,21 @@ class TestRegressionResultsGetter(unittest.TestCase):
         self.assertTrue(np.allclose(
             np.diag(prediction['posterior_covariance']),
             correct_post_var, **tols))
+
+    def test_respects_max_order_for_multivariate(self):
+        max_order = 3
+
+        nvars = 2
+        npts = 3100
+        x = np.random.standard_normal((npts, nvars))
+        y = np.cos(2*x).prod(axis=1)
+
+        getter = regress.RegressionResultsGetter(
+            x, y, max_order=max_order, regression_type='gaussian')
+        rr = getter.make_regression_result()
+
+        for order in rr.orders_and_results:
+            self.assertLessEqual(max(order), max_order)
 
 
 class TestRegress(unittest.TestCase):
@@ -625,6 +630,28 @@ class TestRegress(unittest.TestCase):
         for a, b in zip(prediction, y):
             self.assertAlmostEqual(a, b, places=3)
 
+    def test_init_stores_x_offset_scale_if_set_as_dict(self):
+        np.random.seed(1622)
+        x = np.random.randn(100) * 10
+        y = np.random.randn(x.size)
+
+        x_dict = {'x': x}
+        y_dict = {'y': y}
+        offset = 0
+        scale = 1
+        x_offset_scale = {k: (offset, scale) for k in x_dict}
+
+        rr = regress.make_regression_result(
+            x_dict,
+            y_dict,
+            x_offset_scale=x_offset_scale.copy(),
+            max_order=1)
+
+        self.assertEqual(rr.x_offset_scale.shape[0], len(x_offset_scale))
+        for check in rr.x_offset_scale:
+            self.assertEqual(check[0], offset)
+            self.assertEqual(check[1], scale)
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #                              Helper functions
@@ -643,16 +670,13 @@ def perform_simple_regression(
 
 
 def make_regression_results_getter(
-        x_names=('a', 'b'), y_name='y', npts=31, x_dict=None, y_dict=None,
-        regression_type='gaussian'):
-    if x_dict is None:
-        x_dict = {k: np.random.randn(npts) for k in x_names}
-    if y_dict is None:
-        y_dict = {y_name: np.random.randn(npts)}
+        x=None, y=None, npts=31, regression_type='gaussian', max_order=3):
+    if x is None:
+        x = np.random.standard_normal((npts, 2))
+    if y is None:
+        y = np.random.standard_normal((x.shape[0],))
     getter = regress.RegressionResultsGetter(
-            x_dict=x_dict,
-            y_dict=y_dict,
-            regression_type=regression_type)
+            x, y, regression_type=regression_type, max_order=max_order)
     return getter
 
 
@@ -664,7 +688,6 @@ class MockEvidenceCaller(object):
     def __call__(self, *args):
         self.counter += 1
         return {'log_evidence': self.function(*args)}
-
 
 
 if __name__ == '__main__':
