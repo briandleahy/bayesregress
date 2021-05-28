@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 
@@ -10,6 +11,15 @@ MEDTOLS = {"atol": 1e-6, "rtol": 1e-6}
 
 
 class TestDocs(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # scipy optimize throws a lot of warnings
+        warnings.simplefilter('ignore')
+
+    @classmethod
+    def tearDownClass(cls):
+        warnings.simplefilter('default')
+
     def test_least_squares_regression(self):
         rng = np.random.default_rng(seed=1516)
 
@@ -22,6 +32,42 @@ class TestDocs(unittest.TestCase):
         prediction = result.predict_for_map_model(x)
         residuals = y - prediction
         self.assertLessEqual(residuals.std(), 1.1 * noise.std())
+
+    def test_logistic_regression(self):
+        rng = np.random.default_rng(seed=1621)
+
+        x = np.linspace(-1, 1, 4000)
+        p = 1 - x**2
+        y = rng.random(size=x.size) < p
+
+        result = fit_data(x, y, regression_type='bernoulli')
+
+        prediction = result.predict_for_map_model(x)
+        delta = prediction - p
+        self.assertLess(delta.std(), 0.03)
+
+    def test_multivariate_regression(self):
+        rng = np.random.default_rng(seed=1676)
+        x1, x2, x3 = rng.standard_normal((3, 1300))
+        model = (
+            100 +
+            3 * x1 +
+            2 * x2**2 + 0.3 * x2 +
+            np.sin(x3))
+        noise = rng.standard_normal(x1.shape)
+        y = model + noise
+
+        result = fit_data(
+            {'x1': x1, 'x2': x2, 'x3': x3},
+            {'y': y})
+
+        prediction = result.predict_for_map_model(np.transpose([x1, x2, x3]))
+        residuals = y - prediction
+        self.assertLessEqual(residuals.std(), 1.1 * noise.std())
+
+# TODO:
+# auto-guess if it should be bernoulli or gaussian
+# predict_for_model takes x as a dict?
 
 
 if __name__ == '__main__':
