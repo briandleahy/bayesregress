@@ -33,7 +33,9 @@ def preprocess_inputs(x, y, x_offset_scale=None, y_offset_scale=None, **kwargs):
     else:
         x_names = None
         x = np.asarray(x)
-    # FIXME this needs to check that x is (N, d)
+    # cast 1D regressions to N-D like:
+    if x.ndim == 1:
+        x = x.reshape(-1, 1)
 
     if isinstance(y, dict):
         y_name = list(y.keys())[0]

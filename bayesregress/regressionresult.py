@@ -48,6 +48,8 @@ class RegressionResult(object):
 
     def _normalize_x(self, x):
         z = np.copy(x)
+        if z.ndim == 1:
+            z = z.reshape(-1, 1)
         for i in range(z.shape[1]):
             z[:, i] -= self.x_offset_scale[i][0]
             z[:, i] /= self.x_offset_scale[i][1]

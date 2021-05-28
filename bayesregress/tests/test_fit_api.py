@@ -13,9 +13,9 @@ class TestDocs(unittest.TestCase):
     def test_least_squares_regression(self):
         rng = np.random.default_rng(seed=1516)
 
-        x = np.linspace(-10, 10, 901).reshape(-1, 1)
-        noise = rng.standard_normal(x.shape[0])
-        y = 0.5 * x.squeeze() * np.cos(0.5 * x.squeeze()) + noise
+        x = np.linspace(-10, 10, 901)
+        noise = rng.standard_normal(x.shape)
+        y = 0.5 * x * np.cos(0.5 * x) + noise
 
         result = fit_data(x, y)
 

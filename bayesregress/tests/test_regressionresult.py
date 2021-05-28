@@ -153,7 +153,7 @@ class TestRegressionResult(unittest.TestCase):
             for y1, y2 in zip(from_rr, correct):
                 self.assertEqual(y1, y2)
 
-    def test_normalize_x(self):
+    def test_normalize_x_correct_scaling(self):
         scale = 13.50
         offset = 50.13
 
@@ -166,6 +166,16 @@ class TestRegressionResult(unittest.TestCase):
 
         for v1, v2 in zip(correct.ravel(), scaled.ravel()):
             self.assertAlmostEqual(v1, v2, places=11)
+
+    def test_normalize_x_casts_1d_to_nd_like(self):
+        x_offset_scale = np.reshape([0, 10], (1, 2))
+        rr = make_minimal_regressionresult(x_offset_scale=x_offset_scale)
+        npts = 161
+
+        x = np.ones(npts)
+        z = rr._normalize_x(x)
+
+        self.assertEqual(z.shape, (npts, 1))
 
     def test_predict_raises_error_if_x_wrong_shape(self):
         n_variables = 4

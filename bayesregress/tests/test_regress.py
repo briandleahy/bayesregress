@@ -14,6 +14,17 @@ TOLS = {'atol': 1e-13, 'rtol': 1e-13}
 MEDTOLS = {"atol": 1e-6, "rtol": 1e-6}
 
 
+class TestPreprocessInputs(unittest.TestCase):
+    def test_reshapes_x(self):
+        npts = 100
+        x = np.zeros(npts)
+        y = np.zeros(npts)
+
+        x_y, *_ = regress.preprocess_inputs(x, y)
+        x_reshaped = x_y[0]
+        self.assertEqual(x_reshaped.shape, (npts, 1))
+
+
 class TestBayesRegressor(unittest.TestCase):
     def test_init_stores_posterior(self):
         ll = make_gaussian_log_posterior()
