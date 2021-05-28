@@ -33,13 +33,14 @@ def preprocess_inputs(x, y, x_offset_scale=None, y_offset_scale=None, **kwargs):
     else:
         x_names = None
         x = np.asarray(x)
+    # FIXME this needs to check that x is (N, d)
 
     if isinstance(y, dict):
         y_name = list(y.keys())[0]
         y = y[y_name]
         y = np.asarray(y)
     else:
-        y_names = None
+        y_name = None
         y = np.asarray(y)
 
     if isinstance(x_offset_scale, dict):
