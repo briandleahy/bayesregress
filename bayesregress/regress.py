@@ -56,6 +56,11 @@ def preprocess_inputs(x, y, x_offset_scale=None, y_offset_scale=None, **kwargs):
         'y_offset_scale': y_offset_scale,
         }
     kwargs.update(new_kwargs)
+    if 'regression_type' not in kwargs:
+        if y.dtype.name == 'bool':
+            kwargs['regression_type'] = 'bernoulli'
+        elif 'float' in y.dtype.name:
+            kwargs['regression_type'] = 'gaussian'
 
     names = {'x_names': x_names, 'y_name': y_name}
     return args, kwargs, names
@@ -350,7 +355,6 @@ def maximize_discrete_relevant(function, initial_guess, max_order=10):
     best_value = max(results.values())
     best_x = [x for x in results if results[x] == best_value][0]
     return best_x
-
 
 
 class ConvergenceError(Exception):

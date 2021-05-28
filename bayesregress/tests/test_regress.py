@@ -24,6 +24,24 @@ class TestPreprocessInputs(unittest.TestCase):
         x_reshaped = x_y[0]
         self.assertEqual(x_reshaped.shape, (npts, 1))
 
+    def test_autochooses_bernoulli_when_boolean_data(self):
+        npts = 100
+        x = np.zeros(npts)
+        y = np.zeros(npts, dtype='bool')
+
+        xy, kwargs, names = regress.preprocess_inputs(x, y)
+
+        self.assertEqual(kwargs['regression_type'], 'bernoulli')
+
+    def test_autochooses_gaussian_when_float_data(self):
+        npts = 100
+        x = np.zeros(npts)
+        y = np.zeros(npts, dtype='float64')
+
+        xy, kwargs, names = regress.preprocess_inputs(x, y)
+
+        self.assertEqual(kwargs['regression_type'], 'gaussian')
+
 
 class TestBayesRegressor(unittest.TestCase):
     def test_init_stores_posterior(self):
