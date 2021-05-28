@@ -204,6 +204,38 @@ class TestRegressionResult(unittest.TestCase):
             np.random.standard_normal(wrong_shape),
             (0,) * n_variables)
 
+    def test_model_probabilities_returns_keys_of_orders(self):
+        orders_and_results = make_orders_and_results(nparams=22)
+        rr = regressionresult.GaussianRegressionResult(
+            orders_and_results=orders_and_results)
+
+        probs = rr.model_probabilities
+        self.assertEqual(set(probs), set(orders_and_results))
+
+    def test_model_probabilities_returns_valid_probabilities(self):
+        orders_and_results = make_orders_and_results(nparams=22)
+        rr = regressionresult.GaussianRegressionResult(
+            orders_and_results=orders_and_results)
+
+        probs = rr.model_probabilities
+        for p in probs.values():
+            self.assertGreaterEqual(p, 0)
+            self.assertLessEqual(p, 1)
+
+    def test_model_probabilities_keeps_model_ranking(self):
+        orders_and_results = make_orders_and_results(nparams=22)
+        rr = regressionresult.GaussianRegressionResult(
+            orders_and_results=orders_and_results)
+
+        probs = rr.model_probabilities
+
+        correct = sorted(
+            orders_and_results,
+            key=lambda k: orders_and_results[k]['log_evidence'])
+        check = sorted(probs, key=lambda k: probs[k])
+
+        self.assertEqual(check, correct)
+
 
 # to test in subclasses:
 # predict_for_map_model(self, x):
@@ -364,7 +396,7 @@ def make_univariate_gaussian_regressionresult():
     return rr
 
 
-def make_orders_and_results(gaussian=False):
+def make_orders_and_results(gaussian=False, nparams=10):
     add_params = 2 if gaussian else 1
     out = {
         (o,): {
@@ -372,7 +404,7 @@ def make_orders_and_results(gaussian=False):
             'posterior_covariance': np.eye(o + add_params),
             'log_evidence': np.random.randn(),
             }
-        for o in range(10)
+        for o in range(nparams)
         }
     return out
 

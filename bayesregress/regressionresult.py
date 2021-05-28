@@ -46,6 +46,16 @@ class RegressionResult(object):
         errors = self._unnormalize_error(errors_scaled)
         return errors
 
+    @property
+    def model_probabilities(self):
+        orders = list(self.orders_and_results.keys())
+        log_evidence = np.array(
+            [self.orders_and_results[o]['log_evidence'] for o in orders])
+        probs = np.exp(log_evidence - log_evidence.max())
+        probs /= probs.sum()
+
+        return {o: p for o, p in zip(orders, probs)}
+
     def _normalize_x(self, x):
         z = np.copy(x)
         if z.ndim == 1:
