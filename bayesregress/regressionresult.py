@@ -57,6 +57,8 @@ class RegressionResult(object):
         return {o: p for o, p in zip(orders, probs)}
 
     def _normalize_x(self, x):
+        if isinstance(x, dict):
+            x = self._cast_dict_to_x(x)
         z = np.copy(x)
         if z.ndim == 1:
             z = z.reshape(-1, 1)
@@ -115,6 +117,11 @@ class RegressionResult(object):
 
         variance = np.array([coeff_covariance.dot(f).dot(f) for f in fi])
         return np.sqrt(variance)
+
+    def _cast_dict_to_x(self, x):
+        if self.x_names is None:
+            raise ValueError("x_names must be set to pass in x as a dict")
+        return np.transpose([x[k] for k in self.x_names])
 
     def _unnormalize_prediction(self, y):
         raise NotImplementedError

@@ -205,7 +205,7 @@ class TestRegressionResult(unittest.TestCase):
             (0,) * n_variables)
 
     def test_model_probabilities_returns_keys_of_orders(self):
-        orders_and_results = make_orders_and_results(nparams=22)
+        orders_and_results = make_orders_and_results(norders=22)
         rr = regressionresult.GaussianRegressionResult(
             orders_and_results=orders_and_results)
 
@@ -213,7 +213,7 @@ class TestRegressionResult(unittest.TestCase):
         self.assertEqual(set(probs), set(orders_and_results))
 
     def test_model_probabilities_returns_valid_probabilities(self):
-        orders_and_results = make_orders_and_results(nparams=22)
+        orders_and_results = make_orders_and_results(norders=22)
         rr = regressionresult.GaussianRegressionResult(
             orders_and_results=orders_and_results)
 
@@ -223,7 +223,7 @@ class TestRegressionResult(unittest.TestCase):
             self.assertLessEqual(p, 1)
 
     def test_model_probabilities_keeps_model_ranking(self):
-        orders_and_results = make_orders_and_results(nparams=22)
+        orders_and_results = make_orders_and_results(norders=22)
         rr = regressionresult.GaussianRegressionResult(
             orders_and_results=orders_and_results)
 
@@ -236,6 +236,49 @@ class TestRegressionResult(unittest.TestCase):
 
         self.assertEqual(check, correct)
 
+    def test_cast_dict_to_x_raises_error_if_names_not_set(self):
+        rr = make_minimal_regressionresult()
+        x = {'x': np.zeros(10)}
+        self.assertRaisesRegex(
+            ValueError,
+            'x_names',
+            rr._cast_dict_to_x,
+            x)
+
+    def test_cast_dict_to_x_returns_correct_shape(self):
+        x_names = ['a', 'b', 'c']
+        orders_and_results = {
+            (0,) * len(x_names): {
+                'result': MockScipyOptimizeResult(1),
+                'posterior_covariance': np.eye(1),
+                'log_evidence': 1.0}}
+        rr = regressionresult.RegressionResult(
+            x_names=x_names,
+            orders_and_results=orders_and_results)
+        x_dict = {k: np.zeros(100) + i for i, k in enumerate(x_names)}
+
+        x = rr._cast_dict_to_x(x_dict)
+        for i, k in enumerate(x_names):
+            self.assertTrue(np.all(x[:, i] == x_dict[k]))
+
+    def test_normalize_x_casts_dict(self):
+        x_names = ['a', 'b', 'c']
+        nvars = len(x_names)
+        npts = 31
+        orders_and_results = {
+            (0,) * nvars: {
+                'result': MockScipyOptimizeResult(1),
+                'posterior_covariance': np.eye(1),
+                'log_evidence': 1.0}}
+        rr = regressionresult.RegressionResult(
+            x_names=x_names,
+            x_offset_scale=[(0, 1) for _ in x_names],
+            orders_and_results=orders_and_results)
+
+        x_dict = {k: np.zeros(npts) + i for i, k in enumerate(x_names)}
+        x = rr._normalize_x(x_dict)
+
+        self.assertEqual(x.shape, (npts, nvars))
 
 # to test in subclasses:
 # predict_for_map_model(self, x):
@@ -396,7 +439,7 @@ def make_univariate_gaussian_regressionresult():
     return rr
 
 
-def make_orders_and_results(gaussian=False, nparams=10):
+def make_orders_and_results(gaussian=False, norders=10):
     add_params = 2 if gaussian else 1
     out = {
         (o,): {
@@ -404,7 +447,7 @@ def make_orders_and_results(gaussian=False, nparams=10):
             'posterior_covariance': np.eye(o + add_params),
             'log_evidence': np.random.randn(),
             }
-        for o in range(nparams)
+        for o in range(norders)
         }
     return out
 

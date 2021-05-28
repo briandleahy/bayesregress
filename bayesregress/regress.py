@@ -36,6 +36,8 @@ def preprocess_inputs(x, y, x_offset_scale=None, y_offset_scale=None, **kwargs):
     # cast 1D regressions to N-D like:
     if x.ndim == 1:
         x = x.reshape(-1, 1)
+    if x.dtype.name == 'object':
+        raise ValueError(f'x unrecognized data-type: {x}')
 
     if isinstance(y, dict):
         y_name = list(y.keys())[0]

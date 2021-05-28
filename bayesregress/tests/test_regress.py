@@ -42,6 +42,16 @@ class TestPreprocessInputs(unittest.TestCase):
 
         self.assertEqual(kwargs['regression_type'], 'gaussian')
 
+    def test_raises_error_if_x_weird_datatype(self):
+        x1 = np.zeros(100)
+        y = 0 * x1
+        x = ({'x1': x1},)
+        self.assertRaisesRegex(
+            ValueError,
+            'unrecognized',
+            regress.preprocess_inputs,
+            x, y)
+
 
 class TestBayesRegressor(unittest.TestCase):
     def test_init_stores_posterior(self):

@@ -56,18 +56,13 @@ class TestDocs(unittest.TestCase):
             np.sin(x3))
         noise = rng.standard_normal(x1.shape)
         y = model + noise
+        x = {'x1': x1, 'x2': x2, 'x3': x3}
 
-        result = fit_data(
-            {'x1': x1, 'x2': x2, 'x3': x3},
-            {'y': y})
+        result = fit_data(x, y)
 
-        prediction = result.predict_for_map_model(np.transpose([x1, x2, x3]))
+        prediction = result.predict_for_map_model(x)
         residuals = y - prediction
         self.assertLessEqual(residuals.std(), 1.1 * noise.std())
-
-# TODO:
-# auto-guess if it should be bernoulli or gaussian
-# predict_for_model takes x as a dict?
 
 
 if __name__ == '__main__':
