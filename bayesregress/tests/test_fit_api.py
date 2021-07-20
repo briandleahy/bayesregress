@@ -3,7 +3,7 @@ import warnings
 
 import numpy as np
 
-from bayesregress.regress import fit_data
+from bayesregress.public import fit_data
 
 
 TOLS = {'atol': 1e-13, 'rtol': 1e-13}
